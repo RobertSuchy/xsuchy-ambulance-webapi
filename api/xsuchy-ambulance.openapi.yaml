@@ -1,0 +1,438 @@
+openapi: 3.0.0
+servers:
+  - description: Cluster Endpoint
+    url: /api
+info:
+  description: Department Transports management for Web-In-Cloud system
+  version: "1.0.0"
+  title: Department Transports Api
+  contact:
+    email: xsuchy@stuba.sk
+  license:
+    name: CC BY 4.0
+    url: "https://creativecommons.org/licenses/by/4.0/"
+tags:
+ - name: departmentTransportsList
+   description: Department Transports List API
+ - name: mobilityStatusList
+   description: Mobility Status List API
+ - name: departmentList
+   description: Department List API
+paths:
+  /transports/{departmentId}:
+    get:
+      tags:
+        - departmentTransportsList
+      summary: Provides the department transports list
+      operationId: getTransportsList
+      description: By using departmentId you get list of transports for chosen hospital department
+      parameters:
+        - in: path
+          name: departmentId
+          description: Pass the ID of the particular department
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Value of the transports list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Transport"
+              examples:
+                response:
+                  $ref: "#/components/examples/TransportsListExample"
+        "404":
+          description: Department with such ID does not exist
+    post:
+      tags:
+        - departmentTransportsList
+      summary: Saves new transport into the list
+      operationId: createTransport
+      description: Use this method to store new transport into the list.
+      parameters:
+        - in: path
+          name: departmentId
+          description: Pass the ID of the particular department
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Transport"
+            examples:
+              request-sample:
+                $ref: "#/components/examples/TransportExample"
+        description: Transport to store
+        required: true
+      responses:
+        "200":
+          description: >
+            Value of the transport with re-computed estimated time of transport
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Transport"
+              examples:
+                updated-response:
+                  $ref: "#/components/examples/TransportExample"
+        "400":
+          description: Missing mandatory properties of input object.
+        "404":
+          description: Department with such ID does not exist
+        "409":
+          description: Transport with the specified ID already exists
+  /transports/{departmentId}/{transportId}:
+    get:
+      tags:
+        - departmentTransportsList
+      summary: Provides details about a specific transport
+      operationId: getTransport
+      description: >
+        By using departmentId and transportId you can get details of a particular transport.
+      parameters:
+        - in: path
+          name: departmentId
+          description: Pass the ID of the particular department
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: transportId
+          description: Pass the ID of the particular transport
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Value of the transport
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Transport"
+              examples:
+                response:
+                  $ref: "#/components/examples/TransportExample"
+        "404":
+          description: Department or Transport with such ID does not exist
+    put:
+      tags:
+        - departmentTransportsList
+      summary: Updates specific transport
+      operationId: updateTransport
+      description: Use this method to update the content of the transport.
+      parameters:
+        - in: path
+          name: departmentId
+          description: Pass the ID of the particular department
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: transportId
+          description: Pass the ID of the particular transport
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Transport"
+            examples:
+              request:
+                $ref: "#/components/examples/TransportExample"
+        description: Transport to update
+        required: true
+      responses:
+        "200":
+          description: >
+            Value of the transport with re-computed estimated time of transport
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Transport"
+              examples:
+                response:
+                  $ref: "#/components/examples/TransportExample"
+        "403":
+          description: >
+            Value of the transport ID and the data ID is mismatching. Details are
+            provided in the response body.
+        "404":
+          description: Department or Transport with such ID does not exist
+    delete:
+      tags:
+        - departmentTransportsList
+      summary: Deletes specific transport
+      operationId: deleteTransport
+      description: Use this method to delete the specific transport from the list.
+      parameters:
+        - in: path
+          name: departmentId
+          description: Pass the ID of the particular department
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: transportId
+          description: Pass the ID of the particular transport
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Transport deleted
+        "404":
+          description: Department or Transport with such ID does not exist
+  /mobility-status:
+    get:
+      tags:
+        - mobilityStatusList
+      summary: Provides the list of mobility statuses
+      operationId: getMobilityStatusList
+      description: Provides the list of predefined mobility statuses for patient transport
+      responses:
+        "200":
+          description: Value of the predefined mobility statuses
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MobilityStatus"
+              examples:
+                response:
+                  $ref: "#/components/examples/MobilityStatusListExample"
+  /departments:
+    get:
+      tags:
+        - departmentList
+      summary: Provides the list of all departments
+      operationId: getAllDepartments
+      description: Retrieves a list of all departments
+      responses:
+        "200":
+          description: List of all departments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Department"
+              examples:
+                response:
+                  $ref: "#/components/examples/DepartmentListExample"
+  /departments/{departmentId}:
+    get:
+      tags:
+        - departmentList
+      summary: Provides details about a specific department
+      operationId: getDepartment
+      description: By using departmentId you can get details of a particular department
+      parameters:
+        - in: path
+          name: departmentId
+          description: Pass the ID of the particular department
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Value of the department
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Department"
+              examples:
+                response:
+                  $ref: "#/components/examples/DepartmentExample"
+        "404":
+          description: Department with such ID does not exist
+    post:
+      tags:
+        - departmentList
+      summary: Creates a new department
+      operationId: createDepartment
+      description: Use this method to create a new department.
+      parameters:
+        - in: path
+          name: departmentId
+          description: Pass the ID of the particular department
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Department"
+            examples:
+              request-sample:
+                $ref: "#/components/examples/DepartmentExample"
+        description: Department to create
+        required: true
+      responses:
+        "200":
+          description: >
+            Value of the created department
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Department"
+              examples:
+                response:
+                  $ref: "#/components/examples/DepartmentExample"
+        "400":
+          description: Missing mandatory properties of input object.
+        "409":
+          description: Department with the specified ID already exists
+components:
+  schemas:
+    Transport:
+      type: object
+      required: [id, patientId, patientName, fromDepartmentId, toDepartmentId, scheduledDateTime, estimatedDurationMinutes, mobilityStatus]
+      properties:
+        id:
+          type: string
+          example: a1b2c3
+          description: Unique ID of the transport in this transport list
+        patientId:
+          type: string
+          example: 7710051234
+          description: Unique identifier of the patient - birth number
+        patientName:
+          type: string
+          example: Jozef Mak
+          description: Name of patient in transports list
+        fromDepartmentId:
+          type: string
+          example: dept1
+          description: ID of the department from where the patient is being transported
+        toDepartmentId:
+          type: string
+          example: dept2
+          description: ID of the department to where the patient is being transported
+        scheduledDateTime:
+          type: string
+          format: date-time
+          example: "2038-12-24T10:05:00Z"
+          description: Scheduled time of the transport
+        estimatedDurationMinutes:
+          type: integer
+          format: int32
+          example: 15
+          description: Estimated duration of the transport in minutes
+        mobilityStatus:
+          $ref: "#/components/schemas/MobilityStatus"
+    MobilityStatus:
+      description: "Describes the mobility status of the patient for transport"
+      required:
+        - value
+      properties:
+        value:
+          type: string
+          example: na vozíku
+        code:
+          type: string
+          example: wheelchair
+        description:
+          type: string
+          example: Patient requires a wheelchair for transport
+      example:
+        value: na vozíku
+        code: wheelchair
+        description: Patient requires a wheelchair for transport
+    Department:
+      type: object
+      required: [id, name, city]
+      properties:
+        id:
+          type: string
+          example: dept1
+          description: Unique ID of the department
+        name:
+          type: string
+          example: "Neurológia"
+          description: Name of the department
+        city:
+          type: string
+          example: "Bratislava"
+          description: City where the department is located
+  examples:
+    TransportExample:
+      summary: Jozef Mak transport
+      description: Example of a transport for a patient
+      value:
+        id: a1b2c3
+        patientId: 7710051234
+        patientName: Jozef Mak
+        fromDepartmentId: dept1
+        toDepartmentId: dept2
+        scheduledDateTime: "2038-12-24T10:05:00Z"
+        estimatedDurationMinutes: 15
+        mobilityStatus:
+          value: na vozíku
+          code: wheelchair
+          description: Patient requires a wheelchair for transport
+    TransportsListExample:
+      summary: List of transports
+      description: Example list of transports containing 2 transports
+      value:
+      - id: a1b2c3
+        patientId: 7710051234
+        patientName: Jozef Mak
+        fromDepartmentId: dept1
+        toDepartmentId: dept2
+        scheduledDateTime: "2038-12-24T10:05:00Z"
+        estimatedDurationMinutes: 15
+        mobilityStatus:
+          value: na vozíku
+          code: wheelchair
+          description: Patient requires a wheelchair for transport
+      - id: b4c5d6
+        patientId: 8805067890
+        patientName: Anna Novak
+        fromDepartmentId: dept3
+        toDepartmentId: dept4
+        scheduledDateTime: "2038-12-24T11:00:00Z"
+        estimatedDurationMinutes: 30
+        mobilityStatus:
+          value: ležiaci
+          code: bedridden
+          description: Patient is bedridden and requires stretcher for transport
+    MobilityStatusListExample:
+      summary: List of mobility statuses
+      description: Example list of predefined mobility statuses for patient transport
+      value:
+      - value: na vozíku
+        code: wheelchair
+        description: Patient requires a wheelchair for transport
+      - value: mobilný
+        code: walking
+        description: Patient is able to walk
+      - value: ležiaci
+        code: bedridden
+        description: Patient is bedridden and requires stretcher for transport
+    DepartmentExample:
+      summary: Example of a department
+      description: An example of a department object
+      value:
+        id: dept1
+        name: "Neurológia"
+        city: "Bratislava"
+    DepartmentListExample:
+      summary: List of departments
+      description: Example list of departments containing 2 entries
+      value:
+      - id: dept1
+        name: "Neurológia"
+        city: "Bratislava"
+      - id: dept2
+        name: "Chirurgia"
+        city: "Kosice"
