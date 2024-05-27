@@ -1,0 +1,8 @@
+internal/xsuchy_ambulance/README.md
+internal/xsuchy_ambulance/api_department_list.go
+internal/xsuchy_ambulance/api_department_transports_list.go
+internal/xsuchy_ambulance/api_mobility_status_list.go
+internal/xsuchy_ambulance/model_department.go
+internal/xsuchy_ambulance/model_mobility_status.go
+internal/xsuchy_ambulance/model_transport.go
+internal/xsuchy_ambulance/routers.go
