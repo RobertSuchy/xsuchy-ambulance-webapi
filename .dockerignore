@@ -1,0 +1,5 @@
+internal/xsuchy_ambulance/api_*
+internal/xsuchy_ambulance/model_*
+internal/xsuchy_ambulance/routers.go
+build/
+deployments/

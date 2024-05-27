@@ -19,47 +19,13 @@ tags:
  - name: departmentList
    description: Department List API
 paths:
-  /transports/{departmentId}:
-    get:
-      tags:
-        - departmentTransportsList
-      summary: Provides the department transports list
-      operationId: getTransportsList
-      description: By using departmentId you get list of transports for chosen hospital department
-      parameters:
-        - in: path
-          name: departmentId
-          description: Pass the ID of the particular department
-          required: true
-          schema:
-            type: string
-      responses:
-        "200":
-          description: Value of the transports list
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/Transport"
-              examples:
-                response:
-                  $ref: "#/components/examples/TransportsListExample"
-        "404":
-          description: Department with such ID does not exist
+  "/transports":
     post:
       tags:
         - departmentTransportsList
       summary: Saves new transport into the list
       operationId: createTransport
       description: Use this method to store new transport into the list.
-      parameters:
-        - in: path
-          name: departmentId
-          description: Pass the ID of the particular department
-          required: true
-          schema:
-            type: string
       requestBody:
         content:
           application/json:
@@ -71,7 +37,7 @@ paths:
         description: Transport to store
         required: true
       responses:
-        "200":
+        "201":
           description: >
             Value of the transport with re-computed estimated time of transport
           content:
@@ -83,25 +49,17 @@ paths:
                   $ref: "#/components/examples/TransportExample"
         "400":
           description: Missing mandatory properties of input object.
-        "404":
-          description: Department with such ID does not exist
         "409":
           description: Transport with the specified ID already exists
-  /transports/{departmentId}/{transportId}:
+  "/transports/{transportId}":
     get:
       tags:
         - departmentTransportsList
       summary: Provides details about a specific transport
       operationId: getTransport
       description: >
-        By using departmentId and transportId you can get details of a particular transport.
+        By using transportId you can get details of a particular transport.
       parameters:
-        - in: path
-          name: departmentId
-          description: Pass the ID of the particular department
-          required: true
-          schema:
-            type: string
         - in: path
           name: transportId
           description: Pass the ID of the particular transport
@@ -119,7 +77,25 @@ paths:
                 response:
                   $ref: "#/components/examples/TransportExample"
         "404":
-          description: Department or Transport with such ID does not exist
+          description: Transport with such ID does not exist
+    delete:
+      tags:
+        - departmentTransportsList
+      summary: Deletes specific transport
+      operationId: deleteTransport
+      description: Use this method to delete the specific transport from the list.
+      parameters:
+        - in: path
+          name: transportId
+          description: Pass the ID of the particular transport
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Transport deleted
+        "404":
+          description: Transport with such ID does not exist
     put:
       tags:
         - departmentTransportsList
@@ -127,12 +103,6 @@ paths:
       operationId: updateTransport
       description: Use this method to update the content of the transport.
       parameters:
-        - in: path
-          name: departmentId
-          description: Pass the ID of the particular department
-          required: true
-          schema:
-            type: string
         - in: path
           name: transportId
           description: Pass the ID of the particular transport
@@ -165,13 +135,14 @@ paths:
             Value of the transport ID and the data ID is mismatching. Details are
             provided in the response body.
         "404":
-          description: Department or Transport with such ID does not exist
-    delete:
+          description: Transport with such ID does not exist
+  "/departments/{departmentId}/transports":
+    get:
       tags:
         - departmentTransportsList
-      summary: Deletes specific transport
-      operationId: deleteTransport
-      description: Use this method to delete the specific transport from the list.
+      summary: Provides the department transports list
+      operationId: getTransportsList
+      description: By using departmentId you get list of transports for chosen hospital department
       parameters:
         - in: path
           name: departmentId
@@ -179,18 +150,21 @@ paths:
           required: true
           schema:
             type: string
-        - in: path
-          name: transportId
-          description: Pass the ID of the particular transport
-          required: true
-          schema:
-            type: string
       responses:
-        "204":
-          description: Transport deleted
+        "200":
+          description: Value of the transports list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Transport"
+              examples:
+                response:
+                  $ref: "#/components/examples/TransportsListExample"
         "404":
-          description: Department or Transport with such ID does not exist
-  /mobility-status:
+          description: Department with such ID does not exist
+  "/mobility-status":
     get:
       tags:
         - mobilityStatusList
@@ -209,7 +183,7 @@ paths:
               examples:
                 response:
                   $ref: "#/components/examples/MobilityStatusListExample"
-  /departments:
+  "/departments":
     get:
       tags:
         - departmentList
@@ -228,7 +202,7 @@ paths:
               examples:
                 response:
                   $ref: "#/components/examples/DepartmentListExample"
-  /departments/{departmentId}:
+  "/departments/{departmentId}":
     get:
       tags:
         - departmentList
@@ -278,7 +252,7 @@ paths:
         description: Department to create
         required: true
       responses:
-        "200":
+        "201":
           description: >
             Value of the created department
           content:

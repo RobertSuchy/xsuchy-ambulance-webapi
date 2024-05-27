@@ -10,7 +10,7 @@ import (
 
 // CreateDepartment - Creates a new department
 func (this *implDepartmentListAPI) CreateDepartment(ctx *gin.Context) {
-	value, exists := ctx.Get("db_service")
+	value, exists := ctx.Get("db_service_department")
     if !exists {
         ctx.JSON(
             http.StatusInternalServerError,
@@ -82,51 +82,105 @@ func (this *implDepartmentListAPI) CreateDepartment(ctx *gin.Context) {
 
 // GetAllDepartments - Provides the list of all departments
 func (this *implDepartmentListAPI) GetAllDepartments(ctx *gin.Context) {
-    updateDepartmentFunc(ctx, func(
-        ctx *gin.Context,
-        department *Department,
-    ) (updatedDepartment *Department, responseContent interface{}, status int) {
-        value, exists := ctx.Get("db_service")
-        if !exists {
-            return nil, gin.H{
+    value, exists := ctx.Get("db_service_department")
+    if !exists {
+        ctx.JSON(
+            http.StatusInternalServerError,
+            gin.H{
                 "status":  "Internal Server Error",
-                "message": "db_service not found",
-                "error":   "db_service not found",
-            }, http.StatusInternalServerError
-        }
+                "message": "db not found",
+                "error":   "db not found",
+            })
+        return
+    }
 
-        db, ok := value.(db_service.DbService[Department])
-        if !ok {
-            return nil, gin.H{
+    db, ok := value.(db_service.DbService[Department])
+    if !ok {
+        ctx.JSON(
+            http.StatusInternalServerError,
+            gin.H{
                 "status":  "Internal Server Error",
-                "message": "db_service context is not of type db_service.DbService",
-                "error":   "cannot cast db_service context to db_service.DbService",
-            }, http.StatusInternalServerError
-        }
+                "message": "db context is not of required type",
+                "error":   "cannot cast db context to db_service.DbService",
+            })
+        return
+    }
 
-        departments, err := db.GetAllDocuments(ctx)
-        if err != nil {
-            return nil, gin.H{
+    departments, err := db.GetAllDocuments(ctx)
+    if err != nil {
+        ctx.JSON(
+            http.StatusBadGateway,
+            gin.H{
                 "status":  "Bad Gateway",
-                "message": "Failed to retrieve departments from database",
+                "message": "Failed to fetch departments from database",
                 "error":   err.Error(),
-            }, http.StatusBadGateway
-        }
+            },
+        )
+        return
+    }
 
-        if departments == nil {
-            departments = []Department{}
-        }
-
-        return nil, departments, http.StatusOK
-    })
+    ctx.JSON(http.StatusOK, departments)  
 }
 
 // GetDepartment - Provides details about a specific department
 func (this *implDepartmentListAPI) GetDepartment(ctx *gin.Context) {
-    updateDepartmentFunc(ctx, func(
-        ctx *gin.Context,
-        department *Department,
-    ) (updatedDepartment *Department, responseContent interface{}, status int) {
-        return nil, department, http.StatusOK
-    })
+    value, exists := ctx.Get("db_service_department")
+    if (!exists) {
+        ctx.JSON(
+            http.StatusInternalServerError,
+            gin.H{
+                "status":  "Internal Server Error",
+                "message": "db not found",
+                "error":   "db not found",
+            })
+        return
+    }
+
+    db, ok := value.(db_service.DbService[Department])
+    if (!ok) {
+        ctx.JSON(
+            http.StatusInternalServerError,
+            gin.H{
+                "status":  "Internal Server Error",
+                "message": "db context is not of required type",
+                "error":   "cannot cast db context to db_service.DbService",
+            })
+        return
+    }
+
+    departmentID := ctx.Param("id")
+    if (departmentID == "") {
+        ctx.JSON(
+            http.StatusBadRequest,
+            gin.H{
+                "status":  "Bad Request",
+                "message": "Department ID is required",
+                "error":   "department ID not provided",
+            })
+        return
+    }
+
+    department, err := db.FindDocument(ctx, departmentID)
+    if (err != nil) {
+        if (err == db_service.ErrNotFound) {
+            ctx.JSON(
+                http.StatusNotFound,
+                gin.H{
+                    "status":  "Not Found",
+                    "message": "Department not found",
+                    "error":   err.Error(),
+                })
+        } else {
+            ctx.JSON(
+                http.StatusBadGateway,
+                gin.H{
+                    "status":  "Bad Gateway",
+                    "message": "Failed to fetch department from database",
+                    "error":   err.Error(),
+                })
+        }
+        return
+    }
+
+    ctx.JSON(http.StatusOK, department)
 }

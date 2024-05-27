@@ -4,184 +4,356 @@ import (
   "net/http"
 
   "github.com/gin-gonic/gin"
+  "github.com/google/uuid"
+  "github.com/RobertSuchy/xsuchy-ambulance-webapi/internal/db_service"
 )
 
 // CreateTransport - Saves new transport into the list
 func (this *implDepartmentTransportsListAPI) CreateTransport(ctx *gin.Context) {
-	updateDepartmentFunc(ctx, func(c *gin.Context, department *Department) (*Department, interface{}, int) {
-		var transport Transport
+  value, exists := ctx.Get("db_service_transport")
+  if !exists {
+      ctx.JSON(
+          http.StatusInternalServerError,
+          gin.H{
+              "status":  "Internal Server Error",
+              "message": "db not found",
+              "error":   "db not found",
+          })
+      return
+  }
 
-		if err := c.ShouldBindJSON(&transport); err != nil {
-			return nil, gin.H{
-				"status":  http.StatusBadRequest,
-				"message": "Invalid request body",
-				"error":   err.Error(),
-			}, http.StatusBadRequest
-		}
+  db, ok := value.(db_service.DbService[Transport])
+  if !ok {
+      ctx.JSON(
+          http.StatusInternalServerError,
+          gin.H{
+              "status":  "Internal Server Error",
+              "message": "db context is not of required type",
+              "error":   "cannot cast db context to db_service.DbService",
+          })
+      return
+  }
 
-		if transport.PatientId == "" {
-			return nil, gin.H{
-				"status":  http.StatusBadRequest,
-				"message": "Patient ID is required",
-			}, http.StatusBadRequest
-		}
+  transport := Transport{}
+  err := ctx.BindJSON(&transport)
+  if err != nil {
+      ctx.JSON(
+          http.StatusBadRequest,
+          gin.H{
+              "status":  "Bad Request",
+              "message": "Invalid request body",
+              "error":   err.Error(),
+          })
+      return
+  }
 
-		if transport.Id == "" || transport.Id == "@new" {
-			transport.Id = uuid.NewString()
-		}
+  if transport.Id == "" {
+      transport.Id = uuid.New().String()
+  }
 
-		conflictIndx := slices.IndexFunc(department.TransportsList, func(existing Transport) bool {
-			return transport.Id == existing.Id || transport.PatientId == existing.PatientId
-		})
-
-		if conflictIndx >= 0 {
-			return nil, gin.H{
-				"status":  http.StatusConflict,
-				"message": "Transport entry already exists",
-			}, http.StatusConflict
-		}
-
-		department.TransportsList = append(department.TransportsList, transport)
-
-		entryIndx := slices.IndexFunc(department.TransportsList, func(existing Transport) bool {
-			return transport.Id == existing.Id
-		})
-		if entryIndx < 0 {
-			return nil, gin.H{
-				"status":  http.StatusInternalServerError,
-				"message": "Failed to save transport entry",
-			}, http.StatusInternalServerError
-		}
-		return department, department.TransportsList[entryIndx], http.StatusOK
-	})
+  err = db.CreateDocument(ctx, transport.Id, &transport)
+  switch err {
+  case nil:
+      ctx.JSON(
+          http.StatusCreated,
+          transport,
+      )
+  case db_service.ErrConflict:
+      ctx.JSON(
+          http.StatusConflict,
+          gin.H{
+              "status":  "Conflict",
+              "message": "Transport already exists",
+              "error":   err.Error(),
+          },
+      )
+  default:
+      ctx.JSON(
+          http.StatusBadGateway,
+          gin.H{
+              "status":  "Bad Gateway",
+              "message": "Failed to create transport in database",
+              "error":   err.Error(),
+          },
+      )
+  }
 }
 
 // DeleteTransport - Deletes specific transport
 func (this *implDepartmentTransportsListAPI) DeleteTransport(ctx *gin.Context) {
-	updateDepartmentFunc(ctx, func(c *gin.Context, department *Department) (*Department, interface{}, int) {
-		transportId := ctx.Param("transportId")
+    value, exists := ctx.Get("db_service_transport")
+    if !exists {
+        ctx.JSON(
+            http.StatusInternalServerError,
+            gin.H{
+                "status":  "Internal Server Error",
+                "message": "db not found",
+                "error":   "db not found",
+            })
+        return
+    }
 
-		if transportId == "" {
-			return nil, gin.H{
-				"status":  http.StatusBadRequest,
-				"message": "Transport ID is required",
-			}, http.StatusBadRequest
-		}
+    db, ok := value.(db_service.DbService[Transport])
+    if !ok {
+        ctx.JSON(
+            http.StatusInternalServerError,
+            gin.H{
+                "status":  "Internal Server Error",
+                "message": "db context is not of required type",
+                "error":   "cannot cast db context to db_service.DbService",
+            })
+        return
+    }
 
-		transportIndx := slices.IndexFunc(department.TransportsList, func(existing Transport) bool {
-			return transportId == existing.Id
-		})
+    transportID := ctx.Param("transportId")
+    if transportID == "" {
+        ctx.JSON(
+            http.StatusBadRequest,
+            gin.H{
+                "status":  "Bad Request",
+                "message": "Transport ID is required",
+                "error":   "transport ID not provided",
+            })
+        return
+    }
 
-		if transportIndx < 0 {
-			return nil, gin.H{
-				"status":  http.StatusNotFound,
-				"message": "Transport not found",
-			}, http.StatusNotFound
-		}
-
-		department.TransportsList = append(department.TransportsList[:transportIndx], department.TransportsList[transportIndx+1:]...)
-		return department, nil, http.StatusNoContent
-	})
+    err := db.DeleteDocument(ctx, transportID)
+    switch err {
+    case nil:
+        ctx.JSON(
+            http.StatusNoContent,
+            nil,
+        )
+    case db_service.ErrNotFound:
+        ctx.JSON(
+            http.StatusNotFound,
+            gin.H{
+                "status":  "Not Found",
+                "message": "Transport not found",
+                "error":   err.Error(),
+            },
+        )
+    default:
+        ctx.JSON(
+            http.StatusBadGateway,
+            gin.H{
+                "status":  "Bad Gateway",
+                "message": "Failed to delete transport from database",
+                "error":   err.Error(),
+            },
+        )
+    }	
 }
 
 // GetTransport - Provides details about a specific transport
 func (this *implDepartmentTransportsListAPI) GetTransport(ctx *gin.Context) {
-	updateDepartmentFunc(ctx, func(c *gin.Context, department *Department) (*Department, interface{}, int) {
-		transportId := ctx.Param("transportId")
+	value, exists := ctx.Get("db_service_transport")
+    if !exists {
+        ctx.JSON(
+            http.StatusInternalServerError,
+            gin.H{
+                "status":  "Internal Server Error",
+                "message": "db not found",
+                "error":   "db not found",
+            })
+        return
+    }
 
-		if transportId == "" {
-			return nil, gin.H{
-				"status":  http.StatusBadRequest,
-				"message": "Transport ID is required",
-			}, http.StatusBadRequest
-		}
+    db, ok := value.(db_service.DbService[Transport])
+    if !ok {
+        ctx.JSON(
+            http.StatusInternalServerError,
+            gin.H{
+                "status":  "Internal Server Error",
+                "message": "db context is not of required type",
+                "error":   "cannot cast db context to db_service.DbService",
+            })
+        return
+    }
 
-		transportIndx := slices.IndexFunc(department.TransportsList, func(existing Transport) bool {
-			return transportId == existing.Id
-		})
+    transportID := ctx.Param("transportId")
+    if transportID == "" {
+        ctx.JSON(
+            http.StatusBadRequest,
+            gin.H{
+                "status":  "Bad Request",
+                "message": "Transport ID is required",
+                "error":   "transport ID not provided",
+            })
+        return
+    }
 
-		if transportIndx < 0 {
-			return nil, gin.H{
-				"status":  http.StatusNotFound,
-				"message": "Transport not found",
-			}, http.StatusNotFound
-		}
+    transport, err := db.FindDocument(ctx, transportID)
+    if err != nil {
+        if err == db_service.ErrNotFound {
+            ctx.JSON(
+                http.StatusNotFound,
+                gin.H{
+                    "status":  "Not Found",
+                    "message": "Transport not found",
+                    "error":   err.Error(),
+                })
+        } else {
+            ctx.JSON(
+                http.StatusBadGateway,
+                gin.H{
+                    "status":  "Bad Gateway",
+                    "message": "Failed to fetch transport from database",
+                    "error":   err.Error(),
+                })
+        }
+        return
+    }
 
-		return nil, department.TransportsList[transportIndx], http.StatusOK
-	})
+    ctx.JSON(http.StatusOK, transport)
 }
 
 // GetTransportsList - Provides the department transports list
 func (this *implDepartmentTransportsListAPI) GetTransportsList(ctx *gin.Context) {
-	updateDepartmentFunc(ctx, func(c *gin.Context, department *Department) (*Department, interface{}, int) {
-		result := department.TransportsList
-		if result == nil {
-			result = []Transport{}
-		}
+    value, exists := ctx.Get("db_service_transport")
+    if (!exists) {
+        ctx.JSON(
+            http.StatusInternalServerError,
+            gin.H{
+                "status":  "Internal Server Error",
+                "message": "db not found",
+                "error":   "db not found",
+            })
+        return
+    }
 
-		return nil, result, http.StatusOK
-	})
+    db, ok := value.(db_service.DbService[Transport])
+    if (!ok) {
+        ctx.JSON(
+            http.StatusInternalServerError,
+            gin.H{
+                "status":  "Internal Server Error",
+                "message": "db context is not of required type",
+                "error":   "cannot cast db context to db_service.DbService",
+            })
+        return
+    }
+
+    departmentID := ctx.Param("departmentId")
+    if (departmentID == "") {
+        ctx.JSON(
+            http.StatusBadRequest,
+            gin.H{
+                "status":  "Bad Request",
+                "message": "Department ID is required",
+                "error":   "department ID not provided",
+            })
+        return
+    }
+
+    transports, err := db.GetAllDocuments(ctx)
+    if (err != nil) {
+        ctx.JSON(
+            http.StatusBadGateway,
+            gin.H{
+                "status":  "Bad Gateway",
+                "message": "Failed to fetch transports from database",
+                "error":   err.Error(),
+            },
+        )
+        return
+    }
+
+    var filteredTransports []Transport
+    for _, transport := range transports {
+        if transport.FromDepartmentId == departmentID || transport.ToDepartmentId == departmentID {
+            filteredTransports = append(filteredTransports, *transport)
+        }
+    }
+
+    ctx.JSON(http.StatusOK, filteredTransports)	
 }
 
 // UpdateTransport - Updates specific transport
 func (this *implDepartmentTransportsListAPI) UpdateTransport(ctx *gin.Context) {
-	updateDepartmentFunc(ctx, func(c *gin.Context, department *Department) (*Department, interface{}, int) {
-		var transport Transport
+    value, exists := ctx.Get("db_service_transport")
+    if !exists {
+        ctx.JSON(
+            http.StatusInternalServerError,
+            gin.H{
+                "status":  "Internal Server Error",
+                "message": "db not found",
+                "error":   "db not found",
+            })
+        return
+    }
 
-		if err := c.ShouldBindJSON(&transport); err != nil {
-			return nil, gin.H{
-				"status":  http.StatusBadRequest,
-				"message": "Invalid request body",
-				"error":   err.Error(),
-			}, http.StatusBadRequest
-		}
+    db, ok := value.(db_service.DbService[Transport])
+    if (!ok) {
+        ctx.JSON(
+            http.StatusInternalServerError,
+            gin.H{
+                "status":  "Internal Server Error",
+                "message": "db context is not of required type",
+                "error":   "cannot cast db context to db_service.DbService",
+            })
+        return
+    }
 
-		transportId := ctx.Param("transportId")
+    transportID := ctx.Param("transportId")
+    if (transportID == "") {
+        ctx.JSON(
+            http.StatusBadRequest,
+            gin.H{
+                "status":  "Bad Request",
+                "message": "Transport ID is required",
+                "error":   "transport ID not provided",
+            })
+        return
+    }
 
-		if transportId == "" {
-			return nil, gin.H{
-				"status":  http.StatusBadRequest,
-				"message": "Transport ID is required",
-			}, http.StatusBadRequest
-		}
+    transport := Transport{}
+    err := ctx.BindJSON(&transport)
+    if (err != nil) {
+        ctx.JSON(
+            http.StatusBadRequest,
+            gin.H{
+                "status":  "Bad Request",
+                "message": "Invalid request body",
+                "error":   err.Error(),
+            })
+        return
+    }
 
-		transportIndx := slices.IndexFunc(department.TransportsList, func(existing Transport) bool {
-			return transportId == existing.Id
-		})
+    if transport.Id != transportID {
+        ctx.JSON(
+            http.StatusForbidden,
+            gin.H{
+                "status":  "Forbidden",
+                "message": "Transport ID in the path and request body do not match",
+            })
+        return
+    }
 
-		if transportIndx < 0 {
-			return nil, gin.H{
-				"status":  http.StatusNotFound,
-				"message": "Transport not found",
-			}, http.StatusNotFound
-		}
-
-		if transport.PatientId != "" {
-			department.TransportsList[transportIndx].PatientId = transport.PatientId
-		}
-
-		if transport.PatientName != "" {
-			department.TransportsList[transportIndx].PatientName = transport.PatientName
-		}
-
-		if transport.FromDepartmentId != "" {
-			department.TransportsList[transportIndx].FromDepartmentId = transport.FromDepartmentId
-		}
-
-		if transport.ToDepartmentId != "" {
-			department.TransportsList[transportIndx].ToDepartmentId = transport.ToDepartmentId
-		}
-
-		if !transport.ScheduledDateTime.IsZero() {
-			department.TransportsList[transportIndx].ScheduledDateTime = transport.ScheduledDateTime
-		}
-
-		if transport.EstimatedDurationMinutes > 0 {
-			department.TransportsList[transportIndx].EstimatedDurationMinutes = transport.EstimatedDurationMinutes
-		}
-
-		department.TransportsList[transportIndx].MobilityStatus = transport.MobilityStatus
-
-		return department, department.TransportsList[transportIndx], http.StatusOK
-	})
+    err = db.UpdateDocument(ctx, transportID, &transport)
+    switch err {
+    case nil:
+        ctx.JSON(
+            http.StatusOK,
+            transport,
+        )
+    case db_service.ErrNotFound:
+        ctx.JSON(
+            http.StatusNotFound,
+            gin.H{
+                "status":  "Not Found",
+                "message": "Transport not found",
+                "error":   err.Error(),
+            },
+        )
+    default:
+        ctx.JSON(
+            http.StatusBadGateway,
+            gin.H{
+                "status":  "Bad Gateway",
+                "message": "Failed to update transport in database",
+                "error":   err.Error(),
+            },
+        )
+    }
 }

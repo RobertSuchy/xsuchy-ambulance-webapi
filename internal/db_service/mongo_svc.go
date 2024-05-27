@@ -17,6 +17,7 @@ import (
 
 type DbService[DocType interface{}] interface {
     CreateDocument(ctx context.Context, id string, document *DocType) error
+    GetAllDocuments(ctx context.Context) ([]*DocType, error)
     FindDocument(ctx context.Context, id string) (*DocType, error)
     UpdateDocument(ctx context.Context, id string, document *DocType) error
     DeleteDocument(ctx context.Context, id string) error
@@ -177,6 +178,37 @@ func (this *mongoSvc[DocType]) CreateDocument(ctx context.Context, id string, do
     _, err = collection.InsertOne(ctx, document)
     return err
 }
+
+func (this *mongoSvc[DocType]) GetAllDocuments(ctx context.Context) ([]*DocType, error) {
+    ctx, contextCancel := context.WithTimeout(ctx, this.Timeout)
+    defer contextCancel()
+    client, err := this.connect(ctx)
+    if err != nil {
+        return nil, err
+    }
+    db := client.Database(this.DbName)
+    collection := db.Collection(this.Collection)
+    
+    cursor, err := collection.Find(ctx, bson.D{})
+    if err != nil {
+        return nil, err
+    }
+    defer cursor.Close(ctx)
+    
+    var documents []*DocType
+    for cursor.Next(ctx) {
+        var document DocType
+        if err := cursor.Decode(&document); err != nil {
+            return nil, err
+        }
+        documents = append(documents, &document)
+    }
+    if err := cursor.Err(); err != nil {
+        return nil, err
+    }
+    return documents, nil
+}
+
 
 func (this *mongoSvc[DocType]) FindDocument(ctx context.Context, id string) (*DocType, error) {
     ctx, contextCancel := context.WithTimeout(ctx, this.Timeout)

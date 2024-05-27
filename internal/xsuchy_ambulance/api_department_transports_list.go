@@ -48,11 +48,11 @@ func newDepartmentTransportsListAPI() DepartmentTransportsListAPI {
 }
 
 func (this *implDepartmentTransportsListAPI) addRoutes(routerGroup *gin.RouterGroup) {
-  routerGroup.Handle( http.MethodPost, "/transports/:departmentId", this.CreateTransport)
-  routerGroup.Handle( http.MethodDelete, "/transports/:departmentId/:transportId", this.DeleteTransport)
-  routerGroup.Handle( http.MethodGet, "/transports/:departmentId/:transportId", this.GetTransport)
-  routerGroup.Handle( http.MethodGet, "/transports/:departmentId", this.GetTransportsList)
-  routerGroup.Handle( http.MethodPut, "/transports/:departmentId/:transportId", this.UpdateTransport)
+  routerGroup.Handle( http.MethodPost, "/transports", this.CreateTransport)
+  routerGroup.Handle( http.MethodDelete, "/transports/:transportId", this.DeleteTransport)
+  routerGroup.Handle( http.MethodGet, "/transports/:transportId", this.GetTransport)
+  routerGroup.Handle( http.MethodGet, "/departments/:departmentId/transports", this.GetTransportsList)
+  routerGroup.Handle( http.MethodPut, "/transports/:transportId", this.UpdateTransport)
 }
 
 // Copy following section to separate file, uncomment, and implement accordingly
